@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as http from 'http';
+import * as https from 'https';
 
 export interface ProxyRoute {
   prefix: string;
@@ -15,59 +16,69 @@ export function createProxy(routes: ProxyRoute[]) {
     }
 
     const targetUrl = new URL(route.target);
-    const body = JSON.stringify(req.body ?? {});
-    const headers = { ...req.headers } as Record<string, string | string[]>;
 
-    delete headers['host'];
+    const body = JSON.stringify(req.body ?? {});
+
+    const headers = {
+      ...req.headers,
+    } as Record<string, string | string[]>;
+
+    delete headers.host;
 
     const options: http.RequestOptions = {
+      protocol: targetUrl.protocol,
       hostname: targetUrl.hostname,
-      port: targetUrl.port,
+      port:
+        targetUrl.port ||
+        (targetUrl.protocol === 'https:' ? 443 : 80),
       path: req.originalUrl,
       method: req.method,
       headers: {
         ...headers,
         ...(req.method !== 'GET' && req.method !== 'HEAD'
-          ? { 'content-length': Buffer.byteLength(body).toString() }
+          ? {
+              'content-length': Buffer.byteLength(body).toString(),
+            }
           : {}),
       },
     };
 
-    const proxyReq = http.request(options, (proxyRes) => {
+    // Choix automatique HTTP / HTTPS
+    const client =
+      targetUrl.protocol === 'https:' ? https : http;
+
+    const proxyReq = client.request(options, (proxyRes) => {
       const chunks: Buffer[] = [];
-      proxyRes.on('data', (chunk: Buffer) => chunks.push(chunk));
+
+      proxyRes.on('data', (chunk: Buffer) => {
+        chunks.push(chunk);
+      });
+
       proxyRes.on('end', () => {
         const raw = Buffer.concat(chunks);
-        const contentType = proxyRes.headers['content-type'] ?? '';
-
-        if (contentType.includes('application/json')) {
-          try {
-            const parsed = JSON.parse(raw.toString());
-            res.status(proxyRes.statusCode ?? 200).json(parsed);
-            return;
-          } catch {
-            // fall through to raw send
-          }
-        }
 
         res.status(proxyRes.statusCode ?? 200);
+
         for (const [key, value] of Object.entries(proxyRes.headers)) {
           if (value !== undefined) {
             res.setHeader(key, value);
           }
         }
+
         res.send(raw);
       });
     });
 
     proxyReq.on('error', (err) => {
       console.error(
-        `Proxy error [${req.method} ${req.originalUrl}]:`,
-        err.message,
+        `Proxy error [${req.method} ${req.originalUrl}]`,
+        err,
       );
+
       res.status(502).json({
         statusCode: 502,
         message: `Cannot reach ${route.target}`,
+        error: err.message,
       });
     });
 
