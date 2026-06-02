@@ -20,7 +20,10 @@ async function bootstrap() {
     createProxyMiddleware({
       target: authUrl,
       changeOrigin: true,
-      pathFilter: (path) => path.startsWith('/auth'),
+      pathFilter: (path) =>
+        path.startsWith('/auth') ||
+        path.startsWith('/roles') ||
+        path.startsWith('/permissions'),
     }),
   );
 
