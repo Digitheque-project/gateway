@@ -1,7 +1,10 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Inject } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Controller()
 export class AppController {
+  constructor(private configService: ConfigService) {}
+
   @Get()
   getHome() {
     const html = `<!DOCTYPE html>
@@ -17,6 +20,23 @@ export class AppController {
     .card a { color: #2563eb; text-decoration: none; font-size: 18px; }
     .card a:hover { text-decoration: underline; }
     .card p { color: #6b7280; margin: 4px 0 0; }
+    .wake-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #059669; color: white; border: none; border-radius: 8px;
+      padding: 12px 24px; font-size: 16px; cursor: pointer;
+      transition: background .2s; margin-top: 24px;
+    }
+    .wake-btn:hover { background: #047857; }
+    .wake-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+    .wake-btn.loading::after {
+      content: ''; width: 16px; height: 16px;
+      border: 2px solid white; border-top-color: transparent;
+      border-radius: 50%; animation: spin .6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #wake-result { margin-top: 12px; font-size: 14px; }
+    .ok { color: #059669; }
+    .err { color: #dc2626; }
   </style>
 </head>
 <body>
@@ -40,8 +60,57 @@ export class AppController {
     <a href="/services-docs">/services-docs</a>
     <p>Gestion des services hospitaliers</p>
   </div>
+
+  <button class="wake-btn" onclick="wakeUp()" id="wake-btn">🔌 Réveiller les services</button>
+  <div id="wake-result"></div>
+
+  <script>
+    async function wakeUp() {
+      const btn = document.getElementById('wake-btn');
+      const result = document.getElementById('wake-result');
+      btn.disabled = true; btn.classList.add('loading');
+      btn.textContent = 'Réveil en cours…';
+      result.innerHTML = '';
+
+      try {
+        const res = await fetch('/wake-up');
+        const data = await res.json();
+        result.innerHTML = '<h3 style="margin: 12px 0 8px">Résultat :</h3>';
+        data.results.forEach(r => {
+          const cls = r.ok ? 'ok' : 'err';
+          result.innerHTML += '<div class="' + cls + '">' + r.name + ' — ' + (r.ok ? '✅ OK' : '❌ ' + r.error) + '</div>';
+        });
+      } catch (err) {
+        result.innerHTML = '<div class="err">Erreur de connexion au gateway</div>';
+      } finally {
+        btn.disabled = false; btn.classList.remove('loading');
+        btn.textContent = '🔌 Réveiller les services';
+      }
+    }
+  </script>
 </body>
 </html>`;
     return html;
+  }
+
+  @Get('wake-up')
+  async wakeUp() {
+    const services = [
+      { name: 'Auth Service', url: this.configService.get<string>('AUTH_SERVICE_URL') },
+      { name: 'User Service', url: this.configService.get<string>('USER_SERVICE_URL') },
+      { name: 'Service Service', url: this.configService.get<string>('SERVICE_SERVICE_URL') },
+    ];
+
+    const results = await Promise.allSettled(
+      services.map(s =>
+        fetch(s.url!, { signal: AbortSignal.timeout(10000) })
+          .then(r => ({ name: s.name, ok: true, error: null }))
+          .catch(e => ({ name: s.name, ok: false, error: e?.message || String(e) || 'Unreachable' }))
+      )
+    );
+
+    return {
+      results: results.map(r => r.status === 'fulfilled' ? r.value : { name: 'Unknown', ok: false, error: r.reason?.message || String(r.reason) || 'Failed' }),
+    };
   }
 }
