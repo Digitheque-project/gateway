@@ -78,7 +78,10 @@ export class AppController {
         result.innerHTML = '<h3 style="margin: 12px 0 8px">Résultat :</h3>';
         data.results.forEach(r => {
           const cls = r.ok ? 'ok' : 'err';
-          result.innerHTML += '<div class="' + cls + '">' + r.name + ' — ' + (r.ok ? '✅ OK' : '❌ ' + r.error) + '</div>';
+          const info = r.ok
+            ? '✅ OK' + (r.attempts > 1 ? ' (réveillé, ' + r.attempts + ' tentative' + (r.attempts > 1 ? 's)' : ')') : '')
+            : '❌ ' + r.error + ' (' + r.attempts + ' tentative' + (r.attempts > 1 ? 's)' : ')');
+          result.innerHTML += '<div class="' + cls + '">' + r.name + ' — ' + info + '</div>';
         });
       } catch (err) {
         result.innerHTML = '<div class="err">Erreur de connexion au gateway</div>';
@@ -101,16 +104,28 @@ export class AppController {
       { name: 'Service Service', url: this.configService.get<string>('SERVICE_SERVICE_URL') },
     ];
 
-    const results = await Promise.allSettled(
-      services.map(s =>
-        fetch(s.url!, { signal: AbortSignal.timeout(10000) })
-          .then(r => ({ name: s.name, ok: true, error: null }))
-          .catch(e => ({ name: s.name, ok: false, error: e?.message || String(e) || 'Unreachable' }))
-      )
-    );
+    async function wakeService(name: string, url: string, retries = 3): Promise<{ name: string; ok: boolean; attempts: number; error: string | null }> {
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
+          if (resp.status === 502 && attempt < retries) {
+            await new Promise(r => setTimeout(r, 2000));
+            continue;
+          }
+          return { name, ok: true, attempts: attempt, error: null };
+        } catch (e) {
+          if (attempt < retries) {
+            await new Promise(r => setTimeout(r, 2000));
+            continue;
+          }
+          return { name, ok: false, attempts: attempt, error: e?.message || String(e) || 'Unreachable' };
+        }
+      }
+      return { name, ok: false, attempts: retries, error: 'Max retries' };
+    }
 
-    return {
-      results: results.map(r => r.status === 'fulfilled' ? r.value : { name: 'Unknown', ok: false, error: r.reason?.message || String(r.reason) || 'Failed' }),
-    };
+    const results = await Promise.all(services.map(s => wakeService(s.name, s.url!)));
+
+    return { results };
   }
 }
