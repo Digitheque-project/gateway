@@ -11,6 +11,7 @@ async function bootstrap() {
   const authUrl = configService.get<string>('AUTH_SERVICE_URL')!;
   const userUrl = configService.get<string>('USER_SERVICE_URL')!;
   const serviceUrl = configService.get<string>('SERVICE_SERVICE_URL')!;
+  const chuUrl = configService.get<string>('CHU_SERVICE_URL')!;
 
   // CORS
   app.enableCors({ origin: '*', credentials: true });
@@ -44,6 +45,14 @@ async function bootstrap() {
     }),
   );
 
+  app.use(
+    createProxyMiddleware({
+      target: chuUrl,
+      changeOrigin: true,
+      pathFilter: (path) => path.startsWith('/chu'),
+    }),
+  );
+
   const port = configService.get<number>('PORT', 8080);
   await app.listen(port);
 
@@ -52,10 +61,12 @@ async function bootstrap() {
   console.log(`   http://localhost:${port}/auth-docs`);
   console.log(`   http://localhost:${port}/users-docs`);
   console.log(`   http://localhost:${port}/services-docs`);
+  console.log(`   http://localhost:${port}/chu-docs`);
   console.log(`\n🔁  API:`);
   console.log(`   /auth/*              → ${authUrl}`);
   console.log(`   /users/*, /users-docs → ${userUrl}`);
-  console.log(`   /services/*          → ${serviceUrl}\n`);
+  console.log(`   /services/*          → ${serviceUrl}`);
+  console.log(`   /chu/*               → ${chuUrl}\n`);
 }
 
 bootstrap();

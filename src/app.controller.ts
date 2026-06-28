@@ -20,6 +20,10 @@ export class AppController {
     .card a { color: #2563eb; text-decoration: none; font-size: 18px; }
     .card a:hover { text-decoration: underline; }
     .card p { color: #6b7280; margin: 4px 0 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
+    th { background: #f9fafb; font-weight: 600; color: #374151; }
+    td { color: #4b5563; }
     .wake-btn {
       display: inline-flex; align-items: center; gap: 8px;
       background: #059669; color: white; border: none; border-radius: 8px;
@@ -61,10 +65,35 @@ export class AppController {
     <p>Gestion des services hospitaliers</p>
   </div>
 
+  <div class="card">
+    <h2>🏛️ CHU</h2>
+    <a href="/chu-docs">/chu-docs</a>
+    <p>Gestion des établissements CHU</p>
+  </div>
+
   <button class="wake-btn" onclick="wakeUp()" id="wake-btn">🔌 Réveiller les services</button>
   <div id="wake-result"></div>
 
   <script>
+    async function loadChus() {
+      const el = document.getElementById('chu-list');
+      try {
+        const res = await fetch('/chu');
+        if (!res.ok) { el.innerHTML = '<p class="err">Erreur ' + res.status + '</p>'; return; }
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : [];
+        if (list.length === 0) { el.innerHTML = '<p style="color:#94a3b8">Aucun CHU</p>'; return; }
+        let table = '<table><thead><tr><th>Nom</th><th>Adresse</th><th>Téléphone</th><th>Email</th><th>Responsable</th></tr></thead><tbody>';
+        list.forEach(c => {
+          table += '<tr><td>' + c.name + '</td><td>' + (c.address || '') + '</td><td>' + (c.phone || '') + '</td><td>' + (c.email || '') + '</td><td>' + (c.responsable || '') + '</td></tr>';
+        });
+        table += '</tbody></table>';
+        el.innerHTML = table;
+      } catch (e) {
+        el.innerHTML = '<p class="err">Service CHU indisponible</p>';
+      }
+    }
+
     async function wakeUp() {
       const btn = document.getElementById('wake-btn');
       const result = document.getElementById('wake-result');
@@ -90,6 +119,8 @@ export class AppController {
         btn.textContent = '🔌 Réveiller les services';
       }
     }
+
+    loadChus();
   </script>
 </body>
 </html>`;
