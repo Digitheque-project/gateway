@@ -24,7 +24,8 @@ async function bootstrap() {
       pathFilter: (path) =>
         path.startsWith('/auth') ||
         path.startsWith('/roles') ||
-        path.startsWith('/permissions'),
+        path.startsWith('/permissions') ||
+        path.startsWith('/auth-docs'),
     }),
   );
 
@@ -33,7 +34,9 @@ async function bootstrap() {
       target: userUrl,
       changeOrigin: true,
       pathFilter: (path) =>
-        path.startsWith('/users') || path.startsWith('/user-service-roles'),
+        path.startsWith('/users') || 
+        path.startsWith('/user-service-roles') ||
+        path.startsWith('/users-docs'),
     }),
   );
 
@@ -41,7 +44,9 @@ async function bootstrap() {
     createProxyMiddleware({
       target: serviceUrl,
       changeOrigin: true,
-      pathFilter: (path) => path.startsWith('/services'),
+      pathFilter: (path) => 
+        path.startsWith('/services') ||
+        path.startsWith('/services-docs'),
     }),
   );
 
