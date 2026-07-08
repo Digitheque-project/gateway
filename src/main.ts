@@ -54,7 +54,8 @@ async function bootstrap() {
     createProxyMiddleware({
       target: chuUrl,
       changeOrigin: true,
-      pathFilter: (path) => path.startsWith('/chu'),
+      pathFilter: (path) =>
+        path.startsWith('/chu') || path.startsWith('/prise-en-charge'),
     }),
   );
 
