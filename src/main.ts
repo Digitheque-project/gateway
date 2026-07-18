@@ -12,6 +12,7 @@ async function bootstrap() {
   const userUrl = configService.get<string>('USER_SERVICE_URL')!;
   const serviceUrl = configService.get<string>('SERVICE_SERVICE_URL')!;
   const chuUrl = configService.get<string>('CHU_SERVICE_URL')!;
+  const cliniqueUrl = configService.get<string>('CLINIQUE_SERVICE_URL')!;
 
   // CORS
   app.enableCors({ origin: '*', credentials: true });
@@ -34,7 +35,7 @@ async function bootstrap() {
       target: userUrl,
       changeOrigin: true,
       pathFilter: (path) =>
-        path.startsWith('/users') || 
+        path.startsWith('/users') ||
         path.startsWith('/user-service-roles') ||
         path.startsWith('/users-docs'),
     }),
@@ -44,9 +45,8 @@ async function bootstrap() {
     createProxyMiddleware({
       target: serviceUrl,
       changeOrigin: true,
-      pathFilter: (path) => 
-        path.startsWith('/services') ||
-        path.startsWith('/services-docs'),
+      pathFilter: (path) =>
+        path.startsWith('/services') || path.startsWith('/services-docs'),
     }),
   );
 
@@ -59,6 +59,15 @@ async function bootstrap() {
     }),
   );
 
+  app.use(
+    createProxyMiddleware({
+      target: cliniqueUrl,
+      changeOrigin: true,
+      pathFilter: (path) =>
+        path.startsWith('/clinique') || path.startsWith('/clinique/api/docs'),
+    }),
+  );
+
   const port = configService.get<number>('PORT', 8080);
   await app.listen(port);
 
@@ -68,11 +77,13 @@ async function bootstrap() {
   console.log(`   http://localhost:${port}/users-docs`);
   console.log(`   http://localhost:${port}/services-docs`);
   console.log(`   http://localhost:${port}/chu-docs`);
+  console.log(`   ${cliniqueUrl}/clinique/api/docs`);
   console.log(`\n🔁  API:`);
   console.log(`   /auth/*              → ${authUrl}`);
   console.log(`   /users/*, /users-docs → ${userUrl}`);
   console.log(`   /services/*          → ${serviceUrl}`);
-  console.log(`   /chu/*               → ${chuUrl}\n`);
+  console.log(`   /chu/*               → ${chuUrl}`);
+  console.log(`   /clinique/*          → ${cliniqueUrl}\n`);
 }
 
 bootstrap();

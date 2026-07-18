@@ -71,8 +71,12 @@ export class AppController {
     <p>Gestion des établissements CHU</p>
   </div>
 
-  <button class="wake-btn" onclick="wakeUp()" id="wake-btn">🔌 Réveiller les services</button>
-  <div id="wake-result"></div>
+  <div class="card">
+    <h2>🏥 Clinique</h2>
+    <a href="/clinique/api/docs">/clinique/api/docs</a>
+    <p>Gestion des cliniques</p>
+  </div>
+
 
   <script>
     async function loadChus() {
