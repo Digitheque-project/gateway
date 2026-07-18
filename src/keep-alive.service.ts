@@ -13,6 +13,11 @@ export class KeepAliveService {
       this.configService.get<string>('USER_SERVICE_URL'),
       this.configService.get<string>('SERVICE_SERVICE_URL'),
       this.configService.get<string>('CHU_SERVICE_URL'),
+      this.configService.get<string>('CLINIQUE_SERVICE_URL'),
+      this.configService.get<string>('ENDOSCOPIE_SERVICE_URL'),
+      this.configService.get<string>('PRESCRIPTION_SERVICE_URL'),
+      this.configService.get<string>('EEG_SERVICE_URL'),
+      this.configService.get<string>('ANAPATH_SERVICE_URL'),
     ].filter((url): url is string => !!url);
   }
 
