@@ -129,12 +129,10 @@ export const SERVICES: ServiceEntry[] = [
   },
   {
     name: 'Prescription',
-    prefix: 'prescription',
+    prefix: 'prescriptions',
     urlEnv: 'PRESCRIPTION_SERVICE_URL',
-    paths: ['/prescription'],
+    paths: ['/prescriptions'],
     requiresAuth: true,
-    // Si le back expose réellement la doc sur /prescriptions/api/docs
-    // (pluriel), ajouter ici : docsPath: '/prescriptions/api/docs',
     description: 'Gestion des prescriptions médicales',
   },
   {
