@@ -1,4 +1,36 @@
-export const html = `
+import { SERVICES, docsPathOf } from '../config/services.registry';
+
+/**
+ * Cartes de la page d'accueil, générées depuis le registre des services.
+ * Ajouter une entrée dans services.registry.ts ajoute automatiquement sa carte.
+ * data-search alimente la recherche côté navigateur (nom + chemin + description).
+ */
+function renderCards(): string {
+  return SERVICES.map((service) => {
+    const docsPath = docsPathOf(service);
+    const searchText =
+      `${service.name} ${docsPath} ${service.description ?? ''}`.toLowerCase();
+    return `
+    <a class="card" data-search="${searchText}" href="${docsPath}">
+      <div class="card-top">
+        <span class="beat"></span>
+        <span class="arrow">↗</span>
+      </div>
+      <div>
+        <div class="card-name">${service.name}</div>
+        <div class="card-path">${docsPath}</div>
+      </div>
+      <p class="card-desc">${service.description ?? ''}</p>
+    </a>`;
+  }).join('');
+}
+
+/** Page d'accueil de la gateway, générée dynamiquement depuis le registre. */
+export function renderHomePage(): string {
+  const total = SERVICES.length;
+  const serviceCount = String(total).padStart(2, '0');
+
+  return `
 
 <!DOCTYPE html>
 <html lang="fr">
@@ -84,6 +116,36 @@ export const html = `
     font-size:11px;letter-spacing:.12em;text-transform:uppercase;
     color:var(--text-faint);
     margin:0 0 14px;
+  }
+
+  .search-wrap{position:relative;margin-bottom:22px;}
+  .search-icon{
+    position:absolute;left:14px;top:50%;transform:translateY(-50%);
+    width:15px;height:15px;color:var(--text-faint);pointer-events:none;
+  }
+  .search-input{
+    width:100%;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px 16px 12px 40px;
+    color:var(--text);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    outline:none;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  .search-input::placeholder{color:var(--text-faint);}
+  .search-input:focus{
+    border-color:var(--teal-dim);
+    box-shadow:0 0 0 3px rgba(47,217,196,.12);
+  }
+  .no-result{
+    display:none;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    color:var(--text-faint);
+    padding:6px 2px 0;
   }
 
   .grid{
@@ -210,112 +272,20 @@ export const html = `
     <path d="M0,17 L260,17 L280,17 L292,3 L306,30 L320,10 L332,17 L800,17"/>
   </svg>
 
-  <p class="section-label">Services · 05</p>
-  <div class="grid">
-    <a class="card" href="/auth-docs">
-      <div class="card-top">
-        <span class="beat"></span>
-        <span class="arrow">↗</span>
-      </div>
-      <div>
-        <div class="card-name">Auth</div>
-        <div class="card-path">/auth-docs</div>
-      </div>
-      <p class="card-desc">Authentification, rôles, permissions</p>
-    </a>
-
-    <a class="card" href="/users-docs">
-      <div class="card-top">
-        <span class="beat"></span>
-        <span class="arrow">↗</span>
-      </div>
-      <div>
-        <div class="card-name">Users</div>
-        <div class="card-path">/users-docs</div>
-      </div>
-      <p class="card-desc">Gestion des utilisateurs</p>
-    </a>
-
-    <a class="card" href="/services-docs">
-      <div class="card-top">
-        <span class="beat"></span>
-        <span class="arrow">↗</span>
-      </div>
-      <div>
-        <div class="card-name">Services</div>
-        <div class="card-path">/services-docs</div>
-      </div>
-      <p class="card-desc">Gestion des services hospitaliers</p>
-    </a>
-
-    <a class="card" href="/chu-docs">
-      <div class="card-top">
-        <span class="beat"></span>
-        <span class="arrow">↗</span>
-      </div>
-      <div>
-        <div class="card-name">CHU</div>
-        <div class="card-path">/chu-docs</div>
-      </div>
-      <p class="card-desc">Gestion des établissements CHU</p>
-    </a>
-
-    <a class="card" href="/clinique/api/docs">
-      <div class="card-top">
-        <span class="beat"></span>
-        <span class="arrow">↗</span>
-      </div>
-      <div>
-        <div class="card-name">Clinique</div>
-        <div class="card-path">/clinique/api/docs</div>
-      </div>
-      <p class="card-desc">Gestion des cliniques</p>
-    </a>
-    <a class="card" href="/endoscopie/api/docs">
-        <div class="card-top">
-            <span class="beat"></span>
-            <span class="arrow">↗</span>
-        </div>
-        <div>
-            <div class="card-name">Endoscopie</div>
-            <div class="card-path">/endoscopie/api/docs</div>
-        </div>
-        <p class="card-desc">Gestion des services d'endoscopie</p>
-    </a>
-    <a class="card" href="/prescriptions/api/docs">
-        <div class="card-top">
-            <span class="beat"></span>
-            <span class="arrow">↗</span>
-        </div>
-        <div>
-            <div class="card-name">Prescription</div>
-            <div class="card-path">/prescriptions/api/docs</div>
-        </div>
-        <p class="card-desc">Gestion des prescriptions médicales</p>
-    </a>
-    <a class="card" href="/eeg/api/docs">
-        <div class="card-top">
-            <span class="beat"></span>
-            <span class="arrow">↗</span>
-        </div>
-        <div>
-            <div class="card-name">EEG</div>
-            <div class="card-path">/eeg/api/docs</div>
-        </div>
-        <p class="card-desc">Gestion des services d'EEG</p>
-    </a>
-    <a class="card" href="/api/docs">
-        <div class="card-top">
-            <span class="beat"></span>
-            <span class="arrow">↗</span>
-        </div>
-        <div>
-            <div class="card-name">Anapath</div>
-            <div class="card-path">/api/docs</div>
-        </div>
-        <p class="card-desc">Gestion des services d'anatomopathologie</p>
-    </a>    
+  <div class="search-wrap">
+    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <circle cx="11" cy="11" r="7"/>
+      <path d="M21 21l-4.3-4.3"/>
+    </svg>
+    <input id="service-search" class="search-input" type="text"
+      placeholder="Rechercher un service… (nom, chemin, description)"
+      autocomplete="off" spellcheck="false">
   </div>
+
+  <p class="section-label" id="services-label">Services · ${serviceCount}</p>
+  <div class="grid" id="services-grid">${renderCards()}
+  </div>
+  <p class="no-result" id="no-result">Aucun service ne correspond à cette recherche.</p>
 
   <p class="section-label">Établissements CHU</p>
   <!--div class="table-wrap" id="chu-list">
@@ -337,8 +307,34 @@ export const html = `
 </div>
 
 <script>
+  var TOTAL_SERVICES = ${total};
+
+  function initServiceSearch() {
+    var input = document.getElementById('service-search');
+    var cards = Array.prototype.slice.call(document.querySelectorAll('#services-grid .card'));
+    var label = document.getElementById('services-label');
+    var noResult = document.getElementById('no-result');
+    if (!input || !label) return;
+
+    input.addEventListener('input', function () {
+      var q = input.value.trim().toLowerCase();
+      var visible = 0;
+      cards.forEach(function (card) {
+        var haystack = card.getAttribute('data-search') || '';
+        var match = !q || haystack.indexOf(q) !== -1;
+        card.style.display = match ? '' : 'none';
+        if (match) visible++;
+      });
+      label.textContent = q
+        ? 'Services · ' + visible + '/' + TOTAL_SERVICES
+        : 'Services · ' + TOTAL_SERVICES;
+      if (noResult) noResult.style.display = visible === 0 ? 'block' : 'none';
+    });
+  }
+
   async function loadChus() {
     const el = document.getElementById('chu-list');
+    if (!el) return;
     try {
       const res = await fetch('/chu');
       if (!res.ok) { el.innerHTML = '<div class="err">Erreur ' + res.status + '</div>'; return; }
@@ -379,9 +375,11 @@ export const html = `
     }
   }
 
+  initServiceSearch();
   loadChus();
 </script>
 </body>
 </html>
 
 `;
+}
