@@ -1,6 +1,14 @@
-import { Controller, Get, Inject } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { html } from './page/html';
+import { SERVICES } from './config/services.registry';
+import { renderHomePage } from './page/html';
+
+interface WakeUpResult {
+  name: string;
+  ok: boolean;
+  attempts: number;
+  error: string | null;
+}
 
 @Controller()
 export class AppController {
@@ -8,45 +16,50 @@ export class AppController {
 
   @Get()
   getHome() {
-    return html;
+    // Page d'accueil générée dynamiquement depuis le registre des services.
+    return renderHomePage();
   }
 
   @Get('wake-up')
   async wakeUp() {
-    const services = [
-      { name: 'Auth Service', url: this.configService.get<string>('AUTH_SERVICE_URL') },
-      { name: 'User Service', url: this.configService.get<string>('USER_SERVICE_URL') },
-      { name: 'Service Service', url: this.configService.get<string>('SERVICE_SERVICE_URL') },
-      { name: 'CHU Service', url: this.configService.get<string>('CHU_SERVICE_URL') },
-      { name: 'Clinique Service', url: this.configService.get<string>('CLINIQUE_SERVICE_URL') },
-      { name: 'Endoscopie Service', url: this.configService.get<string>('ENDOSCOPIE_SERVICE_URL') },  
-      { name: 'Prescription Service', url: this.configService.get<string>('PRESCRIPTION_SERVICE_URL') },
-      { name: 'EEG Service', url: this.configService.get<string>('EEG_SERVICE_URL') },
-      { name: 'Anapath Service', url: this.configService.get<string>('ANAPATH_SERVICE_URL') },
-    ];
+    // La liste des services à réveiller est dérivée du registre :
+    // une nouvelle entrée dans services.registry.ts est prise en compte
+    // automatiquement (il suffit que sa variable d'URL soit définie).
+    const services = SERVICES.map((service) => ({
+      name: `${service.name} Service`,
+      url: this.configService.get<string>(service.urlEnv),
+    })).filter((entry): entry is { name: string; url: string } => !!entry.url);
 
-    async function wakeService(name: string, url: string, retries = 3): Promise<{ name: string; ok: boolean; attempts: number; error: string | null }> {
-      for (let attempt = 1; attempt <= retries; attempt++) {
-        try {
-          const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
-          if (resp.status === 502 && attempt < retries) {
-            await new Promise(r => setTimeout(r, 2000)); 
-            continue;
-          }
-          return { name, ok: true, attempts: attempt, error: null }; 
-        } catch (e: AppController | any) {
-          if (attempt < retries) {
-            await new Promise(r => setTimeout(r, 2000));
-            continue;
-          }
-          return { name, ok: false, attempts: attempt, error: e?.message || String(e) || 'Unreachable' };
-        }
-      }
-      return { name, ok: false, attempts: retries, error: 'Max retries' };
-    }
-
-    const results = await Promise.all(services.map(s => wakeService(s.name, s.url!)));
+    const results = await Promise.all(
+      services.map((entry) => this.wakeService(entry.name, entry.url)),
+    );
 
     return { results };
+  }
+
+  private async wakeService(
+    name: string,
+    url: string,
+    retries = 3,
+  ): Promise<WakeUpResult> {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
+        if (resp.status === 502 && attempt < retries) {
+          await new Promise((r) => setTimeout(r, 2000));
+          continue;
+        }
+        return { name, ok: true, attempts: attempt, error: null };
+      } catch (e) {
+        if (attempt < retries) {
+          await new Promise((r) => setTimeout(r, 2000));
+          continue;
+        }
+        const error =
+          e instanceof Error ? e.message : String(e) || 'Unreachable';
+        return { name, ok: false, attempts: attempt, error };
+      }
+    }
+    return { name, ok: false, attempts: retries, error: 'Max retries' };
   }
 }

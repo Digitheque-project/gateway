@@ -1,34 +1,37 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { SERVICES } from './config/services.registry';
+
+interface KeepAliveTarget {
+  name: string;
+  url: string;
+}
 
 @Injectable()
 export class KeepAliveService {
   private readonly logger = new Logger(KeepAliveService.name);
-  private readonly services: string[];
+  private readonly targets: KeepAliveTarget[];
 
   constructor(private configService: ConfigService) {
-    this.services = [
-      this.configService.get<string>('AUTH_SERVICE_URL'),
-      this.configService.get<string>('USER_SERVICE_URL'),
-      this.configService.get<string>('SERVICE_SERVICE_URL'),
-      this.configService.get<string>('CHU_SERVICE_URL'),
-      this.configService.get<string>('CLINIQUE_SERVICE_URL'),
-      this.configService.get<string>('ENDOSCOPIE_SERVICE_URL'),
-      this.configService.get<string>('PRESCRIPTION_SERVICE_URL'),
-      this.configService.get<string>('EEG_SERVICE_URL'),
-      this.configService.get<string>('ANAPATH_SERVICE_URL'),
-    ].filter((url): url is string => !!url);
+    // Les services à pinger sont dérivés du registre : une nouvelle entrée
+    // dans services.registry.ts est automatiquement prise en compte.
+    this.targets = SERVICES.map((service) => ({
+      name: service.name,
+      url: this.configService.get<string>(service.urlEnv),
+    })).filter((target): target is KeepAliveTarget => !!target.url);
   }
 
   @Cron(CronExpression.EVERY_5_MINUTES)
   async pingServices() {
-    for (const url of this.services) {
+    for (const { name, url } of this.targets) {
       try {
         const res = await fetch(url, { signal: AbortSignal.timeout(500) });
-        this.logger.log(`Keep-alive: ${url} → ${res.status}`);
+        this.logger.log(`Keep-alive: ${name} (${url}) → ${res.status}`);
       } catch (err) {
-        this.logger.warn(`Keep-alive: ${url} → ${(err as Error).message}`);
+        this.logger.warn(
+          `Keep-alive: ${name} (${url}) → ${(err as Error).message}`,
+        );
       }
     }
   }
