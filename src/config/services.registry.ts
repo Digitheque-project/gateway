@@ -105,7 +105,7 @@ export const SERVICES: ServiceEntry[] = [
     name: 'Notification',
     prefix: 'notification',
     urlEnv: 'NOTIFICATION_SERVICE_URL',
-    paths: ['/notifications', '/socket.io'],
+    paths: ['/notifications'],
     requiresAuth: true,
     description: 'Notifications temps réel',
   },
