@@ -205,6 +205,22 @@ export const SERVICES: ServiceEntry[] = [
     requiresAuth: true,
     description: "Gestion des services d'anatomopathologie",
   },
+  {
+    name: 'Banque de sang',
+    prefix: 'banque-sang',
+    urlEnv: 'BANQUE_DE_SANG_SERVICE_URL',
+    paths: ['/banque-sang'],
+    requiresAuth: true,
+    description: "Gestion des services de banque de sang",
+  },
+  {
+    name: 'kinésithérapie',
+    prefix: 'kine',
+    urlEnv: 'KINESITHERAPIE_SERVICE_URL',
+    paths: ['/kine'],
+    requiresAuth: true,
+    description: "Gestion des services de kinésithérapie",
+  },
 ];
 
 /**
