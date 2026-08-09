@@ -224,6 +224,39 @@ export function renderHomePage(): string {
   .table-wrap .empty,.table-wrap .err{padding:22px;font-size:13.5px;color:var(--text-faint);}
   .table-wrap .err{color:var(--danger);}
 
+  .wake-panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:24px 26px;
+    display:flex;align-items:center;justify-content:space-between;gap:20px;
+    flex-wrap:wrap;
+  }
+  .wake-copy p{margin:0;}
+  .wake-title{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;margin-bottom:4px !important;}
+  .wake-desc{font-size:13px;color:var(--text-dim);}
+
+  .wake-btn{
+    display:inline-flex;align-items:center;gap:9px;
+    background:var(--amber);
+    color:#2C1B04;
+    border:none;border-radius:8px;
+    padding:12px 22px;
+    font-family:'Inter',sans-serif;font-weight:600;font-size:14px;
+    cursor:pointer;
+    transition:background .15s ease, transform .1s ease;
+    white-space:nowrap;
+  }
+  .wake-btn:hover{background:#FFB84F;}
+  .wake-btn:active{transform:scale(.97);}
+  .wake-btn:disabled{background:var(--amber-dim);color:#D8C4A0;cursor:not-allowed;}
+  .wake-btn .zap{width:15px;height:15px;flex-shrink:0;}
+  .wake-btn.loading .zap{animation:zap .7s linear infinite;}
+  @keyframes zap{0%,100%{opacity:1;}50%{opacity:.25;}}
+
+  #wake-result{margin-top:16px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;display:flex;flex-direction:column;gap:5px;}
+  .ok{color:var(--teal);}
+  .err{color:var(--danger);}
 </style>
 </head>
 <body>
@@ -254,6 +287,22 @@ export function renderHomePage(): string {
   </div>
   <p class="no-result" id="no-result">Aucun service ne correspond à cette recherche.</p>
 
+  <p class="section-label">Établissements CHU</p>
+  <!--div class="table-wrap" id="chu-list">
+    <div class="empty">Chargement…</div>
+  </div-->
+
+  <div class="wake-panel">
+    <div class="wake-copy">
+      <p class="wake-title">Services en veille ?</p>
+      <p class="wake-desc">Réveille tous les microservices avant de les interroger.</p>
+      <div id="wake-result"></div>
+    </div>
+    <button class="wake-btn" id="wake-btn" onclick="wakeUp()" disabled>
+      <svg class="zap" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4.5 13.5H11L10 22L19.5 10.5H13L13 2Z"/></svg>
+      Réveiller les services
+    </button>
+  </div>
 
 </div>
 
@@ -283,7 +332,51 @@ export function renderHomePage(): string {
     });
   }
 
+  async function loadChus() {
+    const el = document.getElementById('chu-list');
+    if (!el) return;
+    try {
+      const res = await fetch('/chu');
+      if (!res.ok) { el.innerHTML = '<div class="err">Erreur ' + res.status + '</div>'; return; }
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : [];
+      if (list.length === 0) { el.innerHTML = '<div class="empty">Aucun CHU</div>'; return; }
+      let table = '<table><thead><tr><th>Nom</th><th>Adresse</th><th>Téléphone</th><th>Email</th><th>Responsable</th></tr></thead><tbody>';
+      list.forEach(c => {
+        table += '<tr><td>' + c.name + '</td><td>' + (c.address || '') + '</td><td>' + (c.phone || '') + '</td><td>' + (c.email || '') + '</td><td>' + (c.responsable || '') + '</td></tr>';
+      });
+      table += '</tbody></table>';
+      el.innerHTML = table;
+    } catch (e) {
+      el.innerHTML = '<div class="err">Service CHU indisponible</div>';
+    }
+  }
+
+  async function wakeUp() {
+    const btn = document.getElementById('wake-btn');
+    const result = document.getElementById('wake-result');
+    btn.disabled = true; btn.classList.add('loading');
+    result.innerHTML = '';
+
+    try {
+      const res = await fetch('/wake-up');
+      const data = await res.json();
+      data.results.forEach(r => {
+        const cls = r.ok ? 'ok' : 'err';
+        const info = r.ok
+          ? 'OK' + (r.attempts > 1 ? ' — réveillé (' + r.attempts + ' tentatives)' : '')
+          : r.error + ' (' + r.attempts + ' tentatives)';
+        result.innerHTML += '<div class="' + cls + '">' + (r.ok ? '●' : '✕') + ' ' + r.name + ' — ' + info + '</div>';
+      });
+    } catch (err) {
+      result.innerHTML = '<div class="err">Erreur de connexion au gateway</div>';
+    } finally {
+      btn.disabled = false; btn.classList.remove('loading');
+    }
+  }
+
   initServiceSearch();
+  loadChus();
 </script>
 </body>
 </html>
