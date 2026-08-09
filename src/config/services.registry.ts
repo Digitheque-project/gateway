@@ -105,7 +105,6 @@ export const SERVICES: ServiceEntry[] = [
     name: 'Notification',
     prefix: 'notification',
     urlEnv: 'NOTIFICATION_SERVICE_URL',
-    // API exposée à la racine (/notifications...), doc sous /notification/api/docs.
     paths: ['/notifications'],
     requiresAuth: true,
     description: 'Notifications temps réel',
@@ -114,7 +113,6 @@ export const SERVICES: ServiceEntry[] = [
     name: 'Upload',
     prefix: 'upload',
     urlEnv: 'UPLOAD_SERVICE_URL',
-    // API exposée à la racine (/files...), doc sous /upload/api/docs.
     paths: ['/files', '/upload'],
     requiresAuth: true,
     description: 'Upload et stockage de fichiers',
@@ -152,13 +150,12 @@ export const SERVICES: ServiceEntry[] = [
     description: 'Gestion de la stomatologie',
   },
   {
-    name: 'Bloc',
+    name: 'Anesthésie-Réanimation',
     prefix: 'bloc',
-    urlEnv: 'BLOC_SERVICE_URL',
-    // Le front appelle /bloc/api/... — '/bloc' couvre aussi /bloc/api/docs.
+    urlEnv: 'ANESTHESIE_REANIMATION_SERVICE_URL',
     paths: ['/bloc'],
     requiresAuth: true,
-    description: 'Gestion du bloc opératoire',
+    description: "Gestion de l'anesthésie-réanimation (bloc opératoire)",
   },
   {
     name: 'Pharmacie',
@@ -180,7 +177,6 @@ export const SERVICES: ServiceEntry[] = [
     name: 'ORL',
     prefix: 'orl',
     urlEnv: 'ORL_SERVICE_URL',
-    // Le front appelle /orl/prescriptions, /orl/resultats, /orl/rendez-vous...
     paths: ['/orl'],
     requiresAuth: true,
     description: "Gestion des services d'ORL",
@@ -191,17 +187,21 @@ export const SERVICES: ServiceEntry[] = [
     urlEnv: 'IMAGERIE_SERVICE_URL',
     paths: ['/imagerie'],
     requiresAuth: true,
-    description: 'Prescriptions laboratoire et imagerie',
+    description: 'Gestion des services imagerie',
   },
   {
-    // /!\ Garder Anapath en dernier : son filtre '/api/docs' est le plus
-    // générique et ne doit pas masquer les docs des autres services.
+    name: 'Laboratoire',
+    prefix: 'laboratoire',
+    urlEnv: 'LABORATOIRE_SERVICE_URL',
+    paths: ['/laboratoire'],
+    requiresAuth: true,
+    description: 'Gestion des services laboratoire',
+  },
+  {
     name: 'Anapath',
     prefix: 'anapath',
     urlEnv: 'ANAPATH_SERVICE_URL',
-    // Ce back ne suit pas la convention /<prefix>/api/docs : chemins explicites.
-    paths: ['/api/anapath'],
-    docsPath: '/api/docs',
+    paths: ['/anapath'],
     requiresAuth: true,
     description: "Gestion des services d'anatomopathologie",
   },
