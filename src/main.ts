@@ -54,11 +54,19 @@ async function bootstrap() {
       return res.status(401).json({ message: 'Token manquant' });
     }
 
+    const token = authHeader.split(' ')[1];
+
+    // Jeton de service partagé : appels serveur-à-serveur (ex. notifyOurService,
+    // synchronisation de rôles) qui n'ont structurellement aucun JWT utilisateur
+    // à transmettre — même mécanisme que celui déjà utilisé par les backends
+    // protégés eux-mêmes (JwtGuard) pour leurs appels internes.
+    const serviceToken = configService.get<string>('SERVICE_API_TOKEN');
+    if (serviceToken && token.trim() === serviceToken.trim()) {
+      return next();
+    }
+
     try {
-      jwt.verify(
-        authHeader.split(' ')[1],
-        configService.get<string>('JWT_SECRET')!,
-      );
+      jwt.verify(token, configService.get<string>('JWT_SECRET')!);
       next();
     } catch {
       return res.status(401).json({ message: 'Token invalide ou expiré' });

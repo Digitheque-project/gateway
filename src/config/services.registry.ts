@@ -161,7 +161,13 @@ export const SERVICES: ServiceEntry[] = [
     name: 'Pharmacie',
     prefix: 'pharmacie',
     urlEnv: 'PHARMACIE_SERVICE_URL',
-    paths: ['/pharmacie'],
+    // '/pharmacie' seul ne correspond à AUCUNE route réelle du service (ses
+    // routes sont à la racine : /articles, /stock, /dispensations...) — ce
+    // qui rendait tout le service inaccessible via la gateway (404
+    // systématique). Ajout de '/articles', le seul sous-chemin actuellement
+    // consommé par un autre service du CHU, sans collision avec un autre
+    // service du registre (vérifié).
+    paths: ['/pharmacie', '/articles'],
     requiresAuth: true,
     description: 'Gestion de la pharmacie',
   },
