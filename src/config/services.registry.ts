@@ -30,6 +30,15 @@ export interface ServiceEntry {
    */
   requiresAuth?: boolean;
   /**
+   * true = ce service expose du WebSocket (socket.io) et les requêtes
+   * d'upgrade HTTP doivent aussi être proxifiées, pas seulement les requêtes
+   * HTTP classiques. NOTE : le contrôle JWT/SERVICE_API_TOKEN ci-dessus ne
+   * s'applique PAS aux requêtes d'upgrade (elles ne passent jamais par la
+   * chaîne de middlewares Express) — un service avec ws:true reste donc non
+   * authentifié à la passerelle sur cette voie, quel que soit requiresAuth.
+   */
+  ws?: boolean;
+  /**
    * Chemin de la doc Swagger si différent de la convention /<prefix>/api/docs.
    * - chemin relatif ('/xxx/api/docs') → proxifié via la gateway ;
    * - URL absolue ('https://...') → simple lien externe sur la page d'accueil,
@@ -105,8 +114,14 @@ export const SERVICES: ServiceEntry[] = [
     name: 'Notification',
     prefix: 'notification',
     urlEnv: 'NOTIFICATION_SERVICE_URL',
-    paths: ['/notifications'],
+    // '/socket.io' : chemin HTTP RÉEL utilisé par le protocole socket.io
+    // (le "namespace" /notifications est un paramètre du handshake, pas un
+    // préfixe d'URL — sans cette entrée, toute connexion WebSocket/polling
+    // socket.io est un 404 systématique via la passerelle, jamais matchée
+    // par le seul préfixe '/notifications').
+    paths: ['/notifications', '/socket.io'],
     requiresAuth: true,
+    ws: true,
     description: 'Notifications temps réel',
   },
   {

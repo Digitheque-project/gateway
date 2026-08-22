@@ -75,20 +75,42 @@ async function bootstrap() {
 
   // Un proxy par service du registre : chemins API + chemin de la doc Swagger.
   // (pathFilter preserve l'URL complète, contrairement à app.use('/prefix', ...))
+  // Pour les services ws:true (ex. Notification), on garde aussi une
+  // référence au proxy pour relayer manuellement les requêtes d'upgrade
+  // HTTP (WebSocket) — http-proxy-middleware ne les intercepte pas tout
+  // seul via app.use(), il faut les brancher explicitement sur le serveur
+  // HTTP sous-jacent (cf. plus bas).
+  const wsProxies: Array<{ service: ServiceEntry; proxy: ReturnType<typeof createProxyMiddleware> }> = [];
   for (const { service, baseUrl } of active) {
     const watched = watchPathsOf(service);
-    app.use(
-      createProxyMiddleware({
-        target: baseUrl,
-        changeOrigin: true,
-        pathFilter: (path) =>
-          watched.some((prefix) => path.startsWith(prefix)),
-      }),
-    );
+    const proxy = createProxyMiddleware({
+      target: baseUrl,
+      changeOrigin: true,
+      ws: service.ws,
+      pathFilter: (path) =>
+        watched.some((prefix) => path.startsWith(prefix)),
+    });
+    app.use(proxy);
+    if (service.ws) wsProxies.push({ service, proxy });
   }
 
   const port = configService.get<number>('PORT', 8080);
-  await app.listen(port);
+  const httpServer = await app.listen(port);
+
+  // Requêtes d'upgrade HTTP (WebSocket) : app.use() ne les voit jamais (elles
+  // ne passent pas par la chaîne de middlewares Express), donc on les
+  // relaie manuellement au bon proxy en comparant le chemin réel de la
+  // requête à celui des services ws:true.
+  httpServer.on('upgrade', (req: Request, socket: import('net').Socket, head: Buffer) => {
+    const match = wsProxies.find(({ service }) =>
+      watchPathsOf(service).some((prefix) => (req.url ?? '').startsWith(prefix)),
+    );
+    if (match) {
+      (match.proxy as unknown as { upgrade: (req: Request, socket: import('net').Socket, head: Buffer) => void }).upgrade(req, socket, head);
+    } else {
+      socket.destroy();
+    }
+  });
 
   // Table de routage générée depuis le registre.
   console.log(`\n🚀  Gateway running on http://localhost:${port}`);
