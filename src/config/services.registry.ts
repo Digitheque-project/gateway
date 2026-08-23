@@ -250,6 +250,37 @@ export const SERVICES: ServiceEntry[] = [
     requiresAuth: true,
     description: "Gestion des services de kinésithérapie",
   },
+  {
+    name: 'Dialyse',
+    prefix: 'dialyse',
+    urlEnv: 'DIALYSE_SERVICE_URL',
+    // Le service expose DEUX familles de routes : la majorité sous /dialyse/...
+    // (prescriptions, rdv, séances, postes, stock-alerts, notifications,
+    // signals, compteurs — couverte ci-dessous), et une seconde famille SANS
+    // préfixe (/sessions, /planning, /plans, /reports, /health, /archives)
+    // qui n'a aucun consommateur connu à ce jour. Volontairement NON exposée
+    // : un préfixe générique comme '/plans' ou '/reports' serait un risque
+    // de collision avec tout futur service (même défaut que Laboratoire/
+    // Endoscopie avant leur correctif) — à ajouter au cas par cas le jour où
+    // un consommateur réel en a besoin.
+    paths: ['/dialyse'],
+    requiresAuth: true,
+    // Sa doc Swagger ne suit pas la convention /dialyse/api/docs : elle est
+    // exposée à la racine (/api/docs, hors du préfixe /dialyse). URL absolue
+    // = simple lien externe sur la page d'accueil, non proxifié (cf.
+    // Pharmacie/Endoscopie plus haut pour des cas similaires côté routes
+    // métier ; ici c'est la doc elle-même qui est concernée).
+    docsPath: 'https://dialyse-back-tqvu.onrender.com/api/docs',
+    description: 'Gestion de la dialyse',
+  },
+  {
+    name: 'Centre de Sommeil',
+    prefix: 'sommeil',
+    urlEnv: 'SOMMEIL_SERVICE_URL',
+    paths: ['/sommeil'],
+    requiresAuth: true,
+    description: 'Gestion du centre de sommeil (polysomnographie)',
+  },
 ];
 
 /**
