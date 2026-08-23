@@ -136,7 +136,15 @@ export const SERVICES: ServiceEntry[] = [
     name: 'Endoscopie',
     prefix: 'endoscopie',
     urlEnv: 'ENDOSCOPIE_SERVICE_URL',
-    paths: ['/endoscopie'],
+    // '/endoscopie' seul ne correspond à AUCUNE route réelle du service (ses
+    // routes métier sont à la racine : /api/rendezvous, /api/patients,
+    // /api/prescriptions... — seule sa doc Swagger suit la convention
+    // /endoscopie/api/docs). Même défaut que Pharmacie (cf. entrée
+    // ci-dessus) : ajout de '/api/rendezvous', le seul sous-chemin
+    // actuellement consommé (agrégation des rendez-vous côté Accueil), sans
+    // exposer tout le reste de l'API (patients, prescriptions, dossiers CPA…)
+    // qui n'a aucun consommateur connu à ce jour.
+    paths: ['/endoscopie', '/api/rendezvous'],
     requiresAuth: true,
     description: "Gestion des services d'endoscopie",
   },
