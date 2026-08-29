@@ -9,6 +9,7 @@ import {
   ServiceEntry,
   docsPathOf,
   watchPathsOf,
+  pathMatchesPrefix,
 } from './config/services.registry';
 
 async function bootstrap() {
@@ -45,7 +46,7 @@ async function bootstrap() {
     const target = active.find(
       ({ service }) =>
         service.requiresAuth &&
-        service.paths.some((prefix) => req.path.startsWith(prefix)),
+        service.paths.some((prefix) => pathMatchesPrefix(req.path, prefix)),
     );
     if (!target || req.path.includes('/docs')) return next();
 
@@ -88,7 +89,7 @@ async function bootstrap() {
       changeOrigin: true,
       ws: service.ws,
       pathFilter: (path) =>
-        watched.some((prefix) => path.startsWith(prefix)),
+        watched.some((prefix) => pathMatchesPrefix(path, prefix)),
     });
     app.use(proxy);
     if (service.ws) wsProxies.push({ service, proxy });
@@ -103,7 +104,7 @@ async function bootstrap() {
   // requête à celui des services ws:true.
   httpServer.on('upgrade', (req: Request, socket: import('net').Socket, head: Buffer) => {
     const match = wsProxies.find(({ service }) =>
-      watchPathsOf(service).some((prefix) => (req.url ?? '').startsWith(prefix)),
+      watchPathsOf(service).some((prefix) => pathMatchesPrefix(req.url ?? '', prefix)),
     );
     if (match) {
       (match.proxy as unknown as { upgrade: (req: Request, socket: import('net').Socket, head: Buffer) => void }).upgrade(req, socket, head);

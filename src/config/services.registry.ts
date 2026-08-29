@@ -316,3 +316,21 @@ export function watchPathsOf(service: ServiceEntry): string[] {
     ? [...service.paths, docsPath]
     : [...service.paths];
 }
+
+/**
+ * Un chemin de requête appartient-il à un préfixe surveillé ? Vérifie une
+ * VRAIE frontière de segment (égalité exacte, ou suivi de '/' ou '?'), pas
+ * un simple `startsWith` : sans ça, un préfixe qui est la sous-chaîne
+ * littérale d'un autre (ex. '/imagerie' et '/imagerie-results') fait
+ * capturer par erreur toutes les requêtes du second par le proxy du
+ * premier — bug réel constaté en conditions réelles (requêtes
+ * /imagerie-results/* envoyées à IMAGERIE_SERVICE_URL au lieu de
+ * IMAGERIE_RESULT_SERVICE_URL, 404 côté service reçu).
+ */
+export function pathMatchesPrefix(path: string, prefix: string): boolean {
+  return (
+    path === prefix ||
+    path.startsWith(`${prefix}/`) ||
+    path.startsWith(`${prefix}?`)
+  );
+}
