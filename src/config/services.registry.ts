@@ -219,6 +219,19 @@ export const SERVICES: ServiceEntry[] = [
     description: 'Gestion des services imagerie',
   },
   {
+    // Service séparé de résultats/rapports imagerie (result-service), pas
+    // le même backend que l'entrée "Imagerie" ci-dessus. Préfixe dédié
+    // /imagerie-results (routes réelles désormais sous /imagerie-results/api/*
+    // côté service, cf. app.setGlobalPrefix) — un préfixe /results ou /users
+    // générique aurait risqué de collisionner avec d'autres entrées.
+    name: 'Imagerie - Résultats',
+    prefix: 'imagerie-results',
+    urlEnv: 'IMAGERIE_RESULT_SERVICE_URL',
+    paths: ['/imagerie-results'],
+    requiresAuth: true,
+    description: "Résultats et rapports d'imagerie",
+  },
+  {
     name: 'Laboratoire',
     prefix: 'laboratoire',
     urlEnv: 'LABORATOIRE_SERVICE_URL',
