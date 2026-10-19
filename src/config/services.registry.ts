@@ -192,6 +192,9 @@ export const SERVICES: ServiceEntry[] = [
     // service du registre (vérifié).
     paths: ['/pharmacie', '/articles'],
     requiresAuth: true,
+    // Temps réel du front Pharmacie : socket.io servi sur /pharmacie/socket.io
+    // (accès protégé par un ticket à usage unique délivré par le service).
+    ws: true,
     description: 'Gestion de la pharmacie',
   },
   {
