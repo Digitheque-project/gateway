@@ -49,6 +49,7 @@ async function bootstrap() {
         service.paths.some((prefix) => pathMatchesPrefix(req.path, prefix)),
     );
     if (!target || req.path.includes('/docs')) return next();
+    if (target.service.publicPaths?.some((prefix) => pathMatchesPrefix(req.path, prefix))) return next();
 
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {

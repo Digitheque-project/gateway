@@ -30,6 +30,11 @@ export interface ServiceEntry {
    */
   requiresAuth?: boolean;
   /**
+   * Préfixes restant publics malgré requiresAuth : fichiers ouverts par un
+   * simple lien ou une balise <img>, qui ne peuvent pas envoyer de jeton.
+   */
+  publicPaths?: string[];
+  /**
    * true = ce service expose du WebSocket (socket.io) et les requêtes
    * d'upgrade HTTP doivent aussi être proxifiées, pas seulement les requêtes
    * HTTP classiques. NOTE : le contrôle JWT/SERVICE_API_TOKEN ci-dessus ne
@@ -211,6 +216,8 @@ export const SERVICES: ServiceEntry[] = [
     urlEnv: 'ORL_SERVICE_URL',
     paths: ['/orl'],
     requiresAuth: true,
+    // Pièces jointes ORL (/orl/uploads/<nom aléatoire>), ouvertes par lien.
+    publicPaths: ['/orl/uploads'],
     description: "Gestion des services d'ORL",
   },
   {
