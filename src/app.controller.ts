@@ -1,6 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { SERVICES } from './config/services.registry';
+import { KeepAliveService } from './keep-alive.service';
 import { renderHomePage } from './page/html';
 
 interface WakeUpResult {
@@ -12,7 +11,7 @@ interface WakeUpResult {
 
 @Controller()
 export class AppController {
-  constructor(private configService: ConfigService) {}
+  constructor(private keepAlive: KeepAliveService) {}
 
   @Get()
   getHome() {
@@ -22,13 +21,9 @@ export class AppController {
 
   @Get('wake-up')
   async wakeUp() {
-    // La liste des services à réveiller est dérivée du registre :
-    // une nouvelle entrée dans services.registry.ts est prise en compte
-    // automatiquement (il suffit que sa variable d'URL soit définie).
-    const services = SERVICES.map((service) => ({
-      name: `${service.name} Service`,
-      url: this.configService.get<string>(service.urlEnv),
-    })).filter((entry): entry is { name: string; url: string } => !!entry.url);
+    // Mêmes cibles que le réveil automatique : backends du registre de la
+    // passerelle, fronts du registre des services, et la passerelle elle-même.
+    const services = await this.keepAlive.targets();
 
     const results = await Promise.all(
       services.map((entry) => this.wakeService(entry.name, entry.url)),
