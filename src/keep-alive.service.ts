@@ -46,7 +46,7 @@ export class KeepAliveService {
     })).filter((target) => !!target.url);
   }
 
-  /** Fronts déclarés dans le registre des services (champ baseUrl). */
+  /** Fronts déclarés dans le registre des services (champ baseUrl, https seulement : pas de localhost). */
   private async fronts(): Promise<KeepAliveTarget[]> {
     const registry = this.configService.get<string>('SERVICE_SERVICE_URL');
     const secret = this.configService.get<string>('JWT_SECRET');
@@ -61,7 +61,7 @@ export class KeepAliveService {
       const list = (await res.json()) as Array<{ name?: string; baseUrl?: string; isActive?: boolean }>;
       const seen = new Set<string>();
       return (Array.isArray(list) ? list : [])
-        .filter((s) => s.isActive !== false && /^https?:\/\//.test(s.baseUrl ?? ''))
+        .filter((s) => s.isActive !== false && /^https:\/\//.test(s.baseUrl ?? ''))
         .filter((s) => !seen.has(s.baseUrl!) && !!seen.add(s.baseUrl!))
         .map((s) => ({ name: `${s.name ?? 'Service'} (front)`, url: s.baseUrl! }));
     } catch (err) {
