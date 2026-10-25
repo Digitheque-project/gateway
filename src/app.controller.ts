@@ -21,8 +21,8 @@ export class AppController {
 
   @Get('wake-up')
   async wakeUp() {
-    // Mêmes cibles que le réveil automatique : backends du registre de la
-    // passerelle, fronts du registre des services, et la passerelle elle-même.
+    // Réveil manuel (bouton de la page d'accueil) : backends du registre de la
+    // passerelle et fronts du registre des services.
     const services = await this.keepAlive.targets();
 
     const results = await Promise.all(

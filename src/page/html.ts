@@ -224,6 +224,17 @@ export function renderHomePage(): string {
   .table-wrap .empty,.table-wrap .err{padding:22px;font-size:13.5px;color:var(--text-faint);}
   .table-wrap .err{color:var(--danger);}
 
+  .wake{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 28px;}
+  .wake button{
+    font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;
+    padding:10px 18px;border-radius:8px;border:1px solid var(--teal);
+    background:var(--teal);color:#062b27;
+  }
+  .wake button:disabled{opacity:.6;cursor:wait;}
+  .wake .hint{font-size:12.5px;color:var(--text-faint);}
+  .ok{color:var(--teal);} .ko{color:var(--danger);}
+  #wake-results{display:none;}
+
 </style>
 </head>
 <body>
@@ -238,6 +249,12 @@ export function renderHomePage(): string {
   <svg class="pulse-line" viewBox="0 0 800 34" preserveAspectRatio="none">
     <path d="M0,17 L260,17 L280,17 L292,3 L306,30 L320,10 L332,17 L800,17"/>
   </svg>
+
+  <div class="wake">
+    <button type="button" id="wake-btn">Réveiller tous les services</button>
+    <span class="hint" id="wake-hint">À utiliser avant une séance de travail : chaque service endormi met 30 à 50 s à démarrer.</span>
+  </div>
+  <div class="table-wrap" id="wake-results"></div>
 
   <div class="search-wrap">
     <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -284,6 +301,34 @@ export function renderHomePage(): string {
   }
 
   initServiceSearch();
+
+  // Réveil manuel : appelle /wake-up et affiche l'état de chaque service.
+  (function initWake() {
+    var btn = document.getElementById('wake-btn');
+    var hint = document.getElementById('wake-hint');
+    var box = document.getElementById('wake-results');
+    if (!btn || !box) return;
+    btn.addEventListener('click', function () {
+      btn.disabled = true;
+      btn.textContent = 'Réveil en cours… (1 min maximum)';
+      fetch('/wake-up')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var rows = (data.results || []).map(function (r) {
+            return '<tr><td>' + r.name + '</td><td class="' + (r.ok ? 'ok">Éveillé' : 'ko">Injoignable') + '</td></tr>';
+          }).join('');
+          var ok = (data.results || []).filter(function (r) { return r.ok; }).length;
+          box.innerHTML = '<table><thead><tr><th>Service</th><th>État</th></tr></thead><tbody>' + rows + '</tbody></table>';
+          box.style.display = 'block';
+          hint.textContent = ok + ' / ' + (data.results || []).length + ' services éveillés.';
+        })
+        .catch(function () { hint.textContent = 'Réveil impossible, réessayez.'; })
+        .then(function () {
+          btn.disabled = false;
+          btn.textContent = 'Réveiller tous les services';
+        });
+    });
+  })();
 </script>
 </body>
 </html>

@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Cron, CronExpression } from '@nestjs/schedule';
 import * as jwt from 'jsonwebtoken';
 import { SERVICES } from './config/services.registry';
 
@@ -9,35 +8,42 @@ export interface KeepAliveTarget {
   url: string;
 }
 
-/** Heure courante (0-23) dans le fuseau donné. */
-export function hourIn(timeZone: string, now = new Date()): number {
-  const hour = new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hourCycle: 'h23', timeZone }).format(now);
-  return Number(hour);
-}
-
-/** Vrai si `hour` est dans [start, end[ (fenêtre pouvant passer minuit, ex. 22 → 6). */
-export function inWindow(hour: number, start: number, end: number): boolean {
-  if (start === end) return true; // fenêtre vide = toute la journée
-  return start < end ? hour >= start && hour < end : hour >= start || hour < end;
-}
-
 /**
- * Garde la plateforme éveillée (Render gratuit endort un service après
- * 15 min sans requête ; le réveil prend 30 à 50 s) :
- *  - les backends du registre de la passerelle ;
- *  - les fronts, d'après les adresses du registre des services ;
- *  - la passerelle elle-même, via son adresse publique (RENDER_EXTERNAL_URL,
- *    fournie par Render) : sans ça, elle s'endormait et ce réveil s'arrêtait.
- *
- * Seulement aux heures de travail (KEEP_ALIVE_START_HOUR / KEEP_ALIVE_END_HOUR,
- * fuseau KEEP_ALIVE_TIMEZONE ; 6 h → 20 h à Madagascar par défaut) : 24 h/24,
- * un compte gratuit hébergeant deux services dépasserait ses 750 h mensuelles.
+ * Services à réveiller quand quelqu'un va réellement s'en servir :
+ *  - à chaque tentative de connexion (POST /auth/login, voir main.ts) ;
+ *  - à la demande (bouton « Réveiller tous les services » de la page
+ *    d'accueil de la passerelle → GET /wake-up).
+ * Cibles : les backends du registre de la passerelle et les fronts du
+ * registre des services. Aucun réveil périodique : un service ne doit tourner
+ * que quand on l'utilise, sinon les heures gratuites des comptes Render s'épuisent.
  */
 @Injectable()
 export class KeepAliveService {
   private readonly logger = new Logger(KeepAliveService.name);
 
+  /** Délai minimal entre deux réveils déclenchés par des connexions. */
+  private static readonly LOGIN_WAKE_COOLDOWN_MS = 10 * 60 * 1000;
+  private lastLoginWake = 0;
+
   constructor(private readonly configService: ConfigService) {}
+
+  /**
+   * Réveil en arrière-plan, sans faire attendre la connexion. Une connexion
+   * suffit à réveiller toute la plateforme pour la séance : les suivantes, dans
+   * les 10 minutes, ne relancent rien.
+   */
+  wakeAllInBackground(): void {
+    const now = Date.now();
+    if (now - this.lastLoginWake < KeepAliveService.LOGIN_WAKE_COOLDOWN_MS) return;
+    this.lastLoginWake = now;
+    void this.targets()
+      .then((targets) =>
+        Promise.all(
+          targets.map(({ url }) => fetch(url, { signal: AbortSignal.timeout(60000) }).catch(() => undefined)),
+        ).then(() => this.logger.log(`Réveil à la connexion : ${targets.length} services sollicités`)),
+      )
+      .catch((err) => this.logger.warn(`Réveil à la connexion échoué : ${(err as Error).message}`));
+  }
 
   private backends(): KeepAliveTarget[] {
     return SERVICES.map((service) => ({
@@ -70,39 +76,8 @@ export class KeepAliveService {
     }
   }
 
-  /** Toutes les cibles à réveiller : passerelle, backends, fronts. */
+  /** Toutes les cibles à réveiller : backends puis fronts. */
   async targets(): Promise<KeepAliveTarget[]> {
-    const self = this.configService.get<string>('RENDER_EXTERNAL_URL');
-    return [
-      ...(self ? [{ name: 'Passerelle', url: self }] : []),
-      ...this.backends(),
-      ...(await this.fronts()),
-    ];
-  }
-
-  isActiveHour(now = new Date()): boolean {
-    const timeZone = this.configService.get<string>('KEEP_ALIVE_TIMEZONE') ?? 'Indian/Antananarivo';
-    const start = Number(this.configService.get<string>('KEEP_ALIVE_START_HOUR') ?? 6);
-    const end = Number(this.configService.get<string>('KEEP_ALIVE_END_HOUR') ?? 20);
-    return inWindow(hourIn(timeZone, now), start, end);
-  }
-
-  @Cron(CronExpression.EVERY_10_MINUTES)
-  async pingServices() {
-    if (!this.isActiveHour()) return;
-    const targets = await this.targets();
-    // En parallèle : une requête suffit à déclencher le réveil côté Render,
-    // inutile d'attendre la réponse complète d'un service en train de démarrer.
-    const results = await Promise.all(
-      targets.map(async ({ name, url }) => {
-        try {
-          const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-          return `${name} ${res.status}`;
-        } catch {
-          return `${name} réveil en cours`;
-        }
-      }),
-    );
-    this.logger.log(`Keep-alive (${targets.length}) : ${results.join(' | ')}`);
+    return [...this.backends(), ...(await this.fronts())];
   }
 }

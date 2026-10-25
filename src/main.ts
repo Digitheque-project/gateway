@@ -11,6 +11,7 @@ import {
   watchPathsOf,
   pathMatchesPrefix,
 } from './config/services.registry';
+import { KeepAliveService } from './keep-alive.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -39,6 +40,17 @@ async function bootstrap() {
 
   // CORS
   app.enableCors({ origin: '*', credentials: true });
+
+  // Une tentative de connexion annonce une séance de travail : on réveille
+  // toute la plateforme en arrière-plan (la requête de connexion continue
+  // normalement vers le service d'authentification, sans attendre).
+  const keepAlive = app.get(KeepAliveService);
+  app.use((req: Request, _res: Response, next: NextFunction) => {
+    if (req.method === 'POST' && pathMatchesPrefix(req.path, '/auth/login')) {
+      keepAlive.wakeAllInBackground();
+    }
+    next();
+  });
 
   // Contrôle JWT pour les services marqués requiresAuth dans le registre.
   // Les chemins contenant '/docs' (pages Swagger) restent publics.
