@@ -149,7 +149,10 @@ export const SERVICES: ServiceEntry[] = [
     // actuellement consommé (agrégation des rendez-vous côté Accueil), sans
     // exposer tout le reste de l'API (patients, prescriptions, dossiers CPA…)
     // qui n'a aucun consommateur connu à ce jour.
-    paths: ['/endoscopie', '/api/rendezvous'],
+    // '/api/resultats' : comptes rendus d'un patient, lus par le dossier patient
+    // (GET /api/resultats/patient/:id) — sans cette route, les résultats
+    // Endoscopie n'apparaissaient jamais dans le dossier ni à l'Accueil.
+    paths: ['/endoscopie', '/api/rendezvous', '/api/resultats'],
     requiresAuth: true,
     description: "Gestion des services d'endoscopie",
   },
