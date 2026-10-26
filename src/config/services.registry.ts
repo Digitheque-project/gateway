@@ -291,12 +291,6 @@ export const SERVICES: ServiceEntry[] = [
     // un consommateur réel en a besoin.
     paths: ['/dialyse'],
     requiresAuth: true,
-    // Sa doc Swagger ne suit pas la convention /dialyse/api/docs : elle est
-    // exposée à la racine (/api/docs, hors du préfixe /dialyse). URL absolue
-    // = simple lien externe sur la page d'accueil, non proxifié (cf.
-    // Pharmacie/Endoscopie plus haut pour des cas similaires côté routes
-    // métier ; ici c'est la doc elle-même qui est concernée).
-    docsPath: 'https://dialyse-back-tqvu.onrender.com/api/docs',
     description: 'Gestion de la dialyse',
   },
   {
