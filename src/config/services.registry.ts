@@ -173,6 +173,15 @@ export const SERVICES: ServiceEntry[] = [
     description: "Gestion des services d'EEG",
   },
   {
+    name: 'Messagerie',
+    prefix: 'messagerie',
+    urlEnv: 'MESSAGERIE_SERVICE_URL',
+    paths: ['/messagerie'],
+    requiresAuth: true,
+    docsPath: '/messagerie/docs',
+    description: 'Messagerie interne : messages privés, groupes, groupes de service, fichiers',
+  },
+  {
     name: 'Stomato',
     prefix: 'stomato',
     urlEnv: 'STOMATO_SERVICE_URL',
