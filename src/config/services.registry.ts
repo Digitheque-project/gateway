@@ -178,6 +178,8 @@ export const SERVICES: ServiceEntry[] = [
     urlEnv: 'MESSAGERIE_SERVICE_URL',
     paths: ['/messagerie'],
     requiresAuth: true,
+    // Script de la bulle, chargé par une balise <script> (sans jeton).
+    publicPaths: ['/messagerie/widget.js'],
     docsPath: '/messagerie/docs',
     description: 'Messagerie interne : messages privés, groupes, groupes de service, fichiers',
   },
