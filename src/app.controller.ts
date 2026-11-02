@@ -35,12 +35,16 @@ export class AppController {
   private async wakeService(
     name: string,
     url: string,
-    retries = 3,
+    retries = 2,
   ): Promise<WakeUpResult> {
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
-        if (resp.status === 502 && attempt < retries) {
+        // Un service endormi met 30 à 50 s à démarrer, Render garde la requête pendant
+        // ce temps : abandonner au bout de 10 s affichait « Injoignable » pour un
+        // service justement en train de se réveiller. 45 s × 2 essais reste sous la
+        // limite de ~100 s d'une requête Render vers la passerelle elle-même.
+        const resp = await fetch(url, { signal: AbortSignal.timeout(45000) });
+        if ((resp.status === 502 || resp.status === 503) && attempt < retries) {
           await new Promise((r) => setTimeout(r, 2000));
           continue;
         }

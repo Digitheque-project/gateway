@@ -310,7 +310,7 @@ export function renderHomePage(): string {
     if (!btn || !box) return;
     btn.addEventListener('click', function () {
       btn.disabled = true;
-      btn.textContent = 'Réveil en cours… (1 min maximum)';
+      btn.textContent = 'Réveil en cours… (jusqu’à 1 min 30)';
       fetch('/wake-up')
         .then(function (r) { return r.json(); })
         .then(function (data) {
