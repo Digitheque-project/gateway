@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { createProxyMiddleware } from 'http-proxy-middleware';
+import { compterTrafic, rapportTrafic } from './trafic';
 import * as jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
 import {
@@ -40,6 +41,10 @@ async function bootstrap() {
 
   // CORS
   app.enableCors({ origin: '*', credentials: true });
+
+  // Totaux de trafic (qui interroge la passerelle, et combien) : GET /stats/trafic.
+  app.use(compterTrafic);
+  app.use('/stats/trafic', rapportTrafic);
 
   // Une tentative de connexion annonce une séance de travail : on réveille
   // toute la plateforme en arrière-plan (la requête de connexion continue
