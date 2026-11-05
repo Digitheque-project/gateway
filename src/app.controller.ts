@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Post, Redirect } from '@nestjs/common';
 import { KeepAliveService } from './keep-alive.service';
 import { renderHomePage } from './page/html';
 
@@ -18,6 +18,13 @@ export class AppController {
     // Page d'accueil générée dynamiquement depuis le registre des services.
     return renderHomePage();
   }
+
+  // Après le test « Just a moment… » du pare-feu de l'hébergeur (Cloudflare),
+  // le navigateur renvoie le formulaire du test en POST sur l'adresse ouverte :
+  // la passerelle répondait « Cannot POST / » au lieu de sa page d'accueil.
+  @Post()
+  @Redirect('/', 303)
+  apresTestPareFeu() {}
 
   @Get('wake-up')
   async wakeUp() {
