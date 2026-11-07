@@ -162,6 +162,9 @@ export const SERVICES: ServiceEntry[] = [
     urlEnv: 'PRESCRIPTION_SERVICE_URL',
     paths: ['/prescriptions'],
     requiresAuth: true,
+    // Temps réel du service Prescription : socket.io servi sur
+    // /prescriptions/socket.io (ex. le backend Anapath, prévenu des demandes).
+    ws: true,
     description: 'Gestion des prescriptions médicales',
   },
   {
