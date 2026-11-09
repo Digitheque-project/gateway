@@ -252,7 +252,7 @@ export function renderHomePage(): string {
 
   <div class="wake">
     <button type="button" id="wake-btn">Réveiller tous les services</button>
-    <span class="hint" id="wake-hint">À utiliser avant une séance de travail : chaque service endormi met 30 à 50 s à démarrer.</span>
+    <span class="hint" id="wake-hint">Pour une séance de test : tous les fronts et backs sont réveillés chaque minute, jusqu’à l’arrêt.</span>
   </div>
   <div class="table-wrap" id="wake-results"></div>
 
@@ -302,32 +302,52 @@ export function renderHomePage(): string {
 
   initServiceSearch();
 
-  // Réveil manuel : appelle /wake-up et affiche l'état de chaque service.
+  // Réveil continu : démarré et arrêté ici, exécuté par la passerelle elle-même.
   (function initWake() {
     var btn = document.getElementById('wake-btn');
     var hint = document.getElementById('wake-hint');
     var box = document.getElementById('wake-results');
     if (!btn || !box) return;
+    var actif = false;
+    var texteHint = hint.textContent;
+
+    function afficher(e) {
+      actif = !!e.actif;
+      btn.disabled = false;
+      btn.textContent = actif ? 'Arrêter le réveil' : 'Réveiller tous les services';
+      btn.style.background = actif ? '#dc2626' : '';
+      var liste = e.resultats || [];
+      if (!actif) {
+        hint.textContent = texteHint;
+        box.style.display = 'none';
+        return;
+      }
+      var ok = liste.filter(function (r) { return r.ok; }).length;
+      hint.textContent = e.dernierPassage
+        ? 'Réveil actif, chaque minute : ' + ok + ' / ' + liste.length + ' services éveillés (dernier passage à ' + new Date(e.dernierPassage).toLocaleTimeString('fr-FR') + ').'
+        : 'Réveil actif : premier passage en cours (jusqu’à 1 min)…';
+      if (liste.length) {
+        box.innerHTML = '<table><thead><tr><th>Service</th><th>État</th></tr></thead><tbody>' + liste.map(function (r) {
+          return '<tr><td>' + r.name + '</td><td class="' + (r.ok ? 'ok">Éveillé' : 'ko">Injoignable') + '</td></tr>';
+        }).join('') + '</tbody></table>';
+        box.style.display = 'block';
+      }
+    }
+
+    function actualiser() {
+      fetch('/wake-up/etat').then(function (r) { return r.json(); }).then(afficher).catch(function () {});
+    }
+
     btn.addEventListener('click', function () {
       btn.disabled = true;
-      btn.textContent = 'Réveil en cours… (jusqu’à 1 min 30)';
-      fetch('/wake-up')
+      fetch(actif ? '/wake-up/arreter' : '/wake-up/demarrer', { method: 'POST' })
         .then(function (r) { return r.json(); })
-        .then(function (data) {
-          var rows = (data.results || []).map(function (r) {
-            return '<tr><td>' + r.name + '</td><td class="' + (r.ok ? 'ok">Éveillé' : 'ko">Injoignable') + '</td></tr>';
-          }).join('');
-          var ok = (data.results || []).filter(function (r) { return r.ok; }).length;
-          box.innerHTML = '<table><thead><tr><th>Service</th><th>État</th></tr></thead><tbody>' + rows + '</tbody></table>';
-          box.style.display = 'block';
-          hint.textContent = ok + ' / ' + (data.results || []).length + ' services éveillés.';
-        })
-        .catch(function () { hint.textContent = 'Réveil impossible, réessayez.'; })
-        .then(function () {
-          btn.disabled = false;
-          btn.textContent = 'Réveiller tous les services';
-        });
+        .then(afficher)
+        .catch(function () { btn.disabled = false; hint.textContent = 'Action impossible, réessayez.'; });
     });
+
+    actualiser();
+    setInterval(actualiser, 15000);
   })();
 </script>
 </body>

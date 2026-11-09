@@ -26,6 +26,22 @@ export class AppController {
   @Redirect('/', 303)
   apresTestPareFeu() {}
 
+  // Séance de test : réveil de tous les fronts et backs chaque minute, jusqu'à l'arrêt.
+  @Get('wake-up/etat')
+  etatReveil() {
+    return this.keepAlive.etatReveilContinu();
+  }
+
+  @Post('wake-up/demarrer')
+  demarrerReveil() {
+    return this.keepAlive.demarrerReveilContinu();
+  }
+
+  @Post('wake-up/arreter')
+  arreterReveil() {
+    return this.keepAlive.arreterReveilContinu();
+  }
+
   @Get('wake-up')
   async wakeUp() {
     // Réveil manuel (bouton de la page d'accueil) : backends du registre de la

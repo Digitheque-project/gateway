@@ -14,8 +14,9 @@ export interface KeepAliveTarget {
  *  - à la demande (bouton « Réveiller tous les services » de la page
  *    d'accueil de la passerelle → GET /wake-up).
  * Cibles : les backends du registre de la passerelle et les fronts du
- * registre des services. Aucun réveil périodique : un service ne doit tourner
- * que quand on l'utilise, sinon les heures gratuites des comptes Render s'épuisent.
+ * registre des services. Le réveil périodique n'existe que pendant une séance de
+ * test, lancé et arrêté depuis la page d'accueil : sinon les heures gratuites des
+ * comptes Render s'épuisent.
  */
 @Injectable()
 export class KeepAliveService {
@@ -25,7 +26,76 @@ export class KeepAliveService {
   private static readonly LOGIN_WAKE_COOLDOWN_MS = 10 * 60 * 1000;
   private lastLoginWake = 0;
 
+  /** Réveil de tous les services chaque minute, tant qu'on ne l'arrête pas. */
+  private static readonly REVEIL_CONTINU_MS = 60 * 1000;
+  private minuterie: NodeJS.Timeout | null = null;
+  private passageEnCours = false;
+  private depuis: string | null = null;
+  private dernierPassage: string | null = null;
+  private resultats: { name: string; ok: boolean }[] = [];
+
   constructor(private readonly configService: ConfigService) {}
+
+  demarrerReveilContinu() {
+    if (!this.minuterie) {
+      this.depuis = new Date().toISOString();
+      this.minuterie = setInterval(() => void this.passage(), KeepAliveService.REVEIL_CONTINU_MS);
+      this.logger.log('Réveil continu démarré');
+      void this.passage();
+    }
+    return this.etatReveilContinu();
+  }
+
+  arreterReveilContinu() {
+    if (this.minuterie) {
+      clearInterval(this.minuterie);
+      this.minuterie = null;
+      this.depuis = null;
+      this.logger.log('Réveil continu arrêté');
+    }
+    return this.etatReveilContinu();
+  }
+
+  etatReveilContinu() {
+    return {
+      actif: !!this.minuterie,
+      depuis: this.depuis,
+      dernierPassage: this.dernierPassage,
+      resultats: this.resultats,
+    };
+  }
+
+  private async passage(): Promise<void> {
+    // Un service lent ne doit pas faire chevaucher deux passages.
+    if (this.passageEnCours) return;
+    this.passageEnCours = true;
+    try {
+      const cibles = await this.targets();
+      const moiMeme = process.env.RENDER_EXTERNAL_URL;
+      if (moiMeme) cibles.push({ name: 'Passerelle', url: moiMeme });
+      const resultats = await Promise.all(
+        cibles.map(async ({ name, url }) => {
+          try {
+            // Toute réponse sous 500 (404, 401…) prouve que le service est réveillé.
+            const r = await fetch(url, { redirect: 'manual', signal: AbortSignal.timeout(55000) });
+            await r.arrayBuffer().catch(() => undefined);
+            return { name, ok: r.status < 500 };
+          } catch {
+            return { name, ok: false };
+          }
+        }),
+      );
+      // Arrêté pendant le passage : ne pas réafficher un état périmé.
+      if (this.minuterie) {
+        this.resultats = resultats;
+        this.dernierPassage = new Date().toISOString();
+      }
+    } catch (err) {
+      this.logger.warn(`Réveil continu : ${(err as Error).message}`);
+    } finally {
+      this.passageEnCours = false;
+    }
+  }
 
   /**
    * Réveil en arrière-plan, sans faire attendre la connexion. Une connexion
