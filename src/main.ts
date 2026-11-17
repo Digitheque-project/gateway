@@ -57,6 +57,49 @@ async function bootstrap() {
     next();
   });
 
+  // Connexion : un refus passager du service d'authentification — 429 du
+  // pare-feu de l'hébergeur (toutes les connexions sortent par la même adresse),
+  // 502/503/504 pendant son réveil — est réessayé ici, quelques secondes plus
+  // tard, au lieu d'être renvoyé à l'agent (« Trop de tentatives », bloqué).
+  const auth = active.find(({ service }) => service.urlEnv === 'AUTH_SERVICE_URL');
+  if (auth) {
+    const ATTENTES_MS = [2000, 4000, 8000, 12000];
+    const PASSAGERS = [429, 502, 503, 504];
+    app.use(async (req: Request, res: Response, next: NextFunction) => {
+      if (req.method !== 'POST' || !pathMatchesPrefix(req.path, '/auth/login')) return next();
+      try {
+        const morceaux: Buffer[] = [];
+        for await (const m of req) morceaux.push(Buffer.from(m as Buffer));
+        const corps = Buffer.concat(morceaux);
+        const url = `${auth.baseUrl.replace(/\/$/, '')}${req.originalUrl}`;
+        let reponse: Awaited<ReturnType<typeof fetch>> | null = null;
+        for (let essai = 0; ; essai++) {
+          reponse = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': String(req.headers['content-type'] ?? 'application/json') },
+            body: corps,
+            signal: AbortSignal.timeout(60000),
+          }).catch(() => null);
+          if ((reponse && !PASSAGERS.includes(reponse.status)) || essai >= ATTENTES_MS.length) break;
+          console.warn(
+            `Connexion : réponse ${reponse?.status ?? 'absente'} de l'authentification, nouvel essai dans ${ATTENTES_MS[essai] / 1000} s`,
+          );
+          await new Promise((ok) => setTimeout(ok, ATTENTES_MS[essai]));
+        }
+        if (!reponse) {
+          res.status(503).json({ message: "Service d'authentification injoignable, réessayez dans un instant" });
+          return;
+        }
+        res
+          .status(reponse.status)
+          .type(reponse.headers.get('content-type') ?? 'application/json')
+          .send(await reponse.text());
+      } catch {
+        res.status(502).json({ message: 'Connexion impossible, réessayez dans un instant' });
+      }
+    });
+  }
+
   // Contrôle JWT pour les services marqués requiresAuth dans le registre.
   // Les chemins contenant '/docs' (pages Swagger) restent publics.
   app.use((req: Request, res: Response, next: NextFunction) => {
